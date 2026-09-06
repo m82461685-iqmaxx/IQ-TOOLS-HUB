@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IQ DEFENCES // Offensive Cybersecurity & Android APK Auditing</title>
+  <meta name="description" content="Elite offensive-security practice delivering penetration testing, Android APK auditing, and zero-day vulnerability research before adversarial exploitation." />
+  
+  <!-- Google Fonts: Chakra Petch, Inter, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,500;0,600;0,700;1,700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            void: '#05070B',
+            surface: '#0B0F18',
+            'surface-elevated': '#121826',
+            border: '#1D2434',
+            'border-subtle': '#2A344A',
+            cyan: {
+              DEFAULT: '#39E6DD',
+              glow: '#22d3ee',
+              dark: '#0e7490'
+            },
+            violet: {
+              DEFAULT: '#7B61FF',
+              glow: '#9d86ff',
+              dark: '#581c87'
+            },
+            risk: {
+              green: '#34D399',
+              amber: '#F5C043',
+              red: '#FF5C6C'
+            }
+          },
+          fontFamily: {
+            chakra: ['"Chakra Petch"', 'sans-serif'],
+            inter: ['"Inter"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          animation: {
+            'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'scanline': 'scanline 8s linear infinite',
+            'spin-slow': 'spin 20s linear infinite',
+          },
+          keyframes: {
+            scanline: {
+              '0%': { transform: 'translateY(-100%)' },
+              '100%': { transform: 'translateY(100vh)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- External CDN Scripts: Three.js r128 & GSAP 3.12.5 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #05070B;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1D2434;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #39E6DD;
+    }
+
+    ::selection {
+      background: rgba(57, 230, 221, 0.25);
+      color: #39E6DD;
+    }
+
+    /* Custom Cursor */
+    @media (pointer: fine) {
+      body {
+        cursor: default;
+      }
+      .custom-cursor {
+        pointer-events: none;
+        position: fixed;
+        width: 10px;
+        height: 10px;
+        background: #39E6DD;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        transition: width 0.2s, height 0.2s, background 0.2s, transform 0.05s linear;
+        z-index: 9999;
+        mix-blend-mode: screen;
+        box-shadow: 0 0 12px #39E6DD;
+      }
+      .custom-cursor-follower {
+        pointer-events: none;
+        position: fixed;
+        width: 36px;
+        height: 36px;
+        border: 1px dashed rgba(123, 97, 255, 0.6);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        transition: width 0.3s, height 0.3s, border-color 0.3s, transform 0.15s ease-out;
+        z-index: 9998;
+      }
+      .cursor-hover .custom-cursor {
+        width: 18px;
+        height: 18px;
+        background: #7B61FF;
+        box-shadow: 0 0 20px #7B61FF;
+      }
+      .cursor-hover .custom-cursor-follower {
+        width: 54px;
+        height: 54px;
+        border-color: #39E6DD;
+        border-style: solid;
+      }
+    }
+
+    /* Grid & Glow utilities */
+    .bg-cyber-grid {
+      background-image: 
+        linear-gradient(rgba(29, 36, 52, 0.4) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(29, 36, 52, 0.4) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    .glow-cyan {
+      box-shadow: 0 0 30px rgba(57, 230, 221, 0.18);
+    }
+    .glow-violet {
+      box-shadow: 0 0 30px rgba(123, 97, 255, 0.18);
+    }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .custom-cursor, .custom-cursor-follower {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-void text-slate-300 font-inter antialiased overflow-x-hidden selection:bg-cyan/20 selection:text-cyan relative">
+
+  <!-- Desktop Custom Magnetic Cursor -->
+  <div class="custom-cursor hidden md:block" id="cursor-dot"></div>
+  <div class="custom-cursor-follower hidden md:block" id="cursor-follower"></div>
+
+  <!-- Ambient Cyber Scanline Overlay -->
+  <div class="fixed inset-x-0 h-40 pointer-events-none -z-5 animate-scanline opacity-25" aria-hidden="true">
+    <div class="w-full h-full bg-gradient-to-b from-transparent via-cyan/10 to-transparent"></div>
+    <div class="w-full h-[1px] bg-gradient-to-r from-transparent via-cyan/40 to-transparent"></div>
+  </div>
+
+  <!-- 1. FIXED NAVBAR -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-void/85 backdrop-blur-xl border-b border-border transition-all duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      
+      <!-- Brand Logo Mark (Shield + Checkmark SVG) -->
+      <a href="#hero" class="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan rounded-lg p-1">
+        <div class="relative w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border group-hover:border-cyan/50 transition-colors shadow-sm">
+          <svg class="w-6 h-6 text-cyan transition-transform duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="url(#cyan-violet-grad)" />
+            <path d="m9 12 2 2 4-4" stroke="#39E6DD" stroke-width="2.5" />
+            <defs>
+              <linearGradient id="cyan-violet-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#39E6DD" />
+                <stop offset="1" stop-color="#7B61FF" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="absolute inset-0 rounded-xl bg-cyan/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        </div>
+        <div class="flex flex-col">
+          <span class="font-chakra font-bold text-xl tracking-wider text-white group-hover:text-cyan transition-colors">
+            IQ DEFENCES
+          </span>
+          <span class="font-mono text-[9px] text-cyan/70 tracking-widest uppercase -mt-1 font-semibold">
+            // OFFENSIVE SECURITY LABS
+          </span>
+        </div>
+      </a>
+
+      <!-- Desktop Nav Items -->
+      <nav class="hidden md:flex items-center gap-8 font-mono text-xs tracking-wider font-semibold text-slate-400" aria-label="Main Navigation">
+        <a href="#threat-matrix" class="hover:text-cyan transition-colors focus:outline-none focus-visible:text-cyan">01. THREAT MATRIX</a>
+        <a href="#capabilities" class="hover:text-cyan transition-colors focus:outline-none focus-visible:text-cyan">02. CAPABILITIES</a>
+        <a href="#methodology" class="hover:text-cyan transition-colors focus:outline-none focus-visible:text-cyan">03. METHODOLOGY</a>
+        <a href="#proof" class="hover:text-cyan transition-colors focus:outline-none focus-visible:text-cyan">04. SCAN PROOF</a>
+        <a href="#contact" class="hover:text-cyan transition-colors focus:outline-none focus-visible:text-cyan">05. CONTACT</a>
+      </nav>
+
+      <!-- Magnetic CTA Button -->
+      <div class="flex items-center gap-4">
+        <a href="#contact" class="magnetic-btn relative inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-surface-elevated border border-cyan/40 hover:border-cyan text-cyan font-mono text-xs font-bold tracking-widest uppercase transition-all duration-300 hover:shadow-[0_0_20px_rgba(57,230,221,0.3)] hover:bg-cyan/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan">
+          <span class="relative z-10 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyan animate-pulse"></span>
+            ENGAGE DEFENCES
+          </span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 2. HERO SECTION WITH THREE.JS 3D BACKGROUND -->
+  <section id="hero" class="relative min-h-screen flex flex-col justify-center pt-28 pb-16 px-4 sm:px-6 lg:px-8 overflow-hidden bg-void">
+    
+    <!-- Three.js 3D WebGL Canvas -->
+    <div id="three-hero-container" class="absolute inset-0 pointer-events-none z-0"></div>
+
+    <!-- Radial Gradient Mask to blend Three.js -->
+    <div class="absolute inset-0 bg-gradient-to-t from-void via-transparent to-void/70 pointer-events-none z-1"></div>
+    <div class="absolute inset-0 bg-radial-gradient pointer-events-none z-1" style="background: radial-gradient(circle at center, transparent 30%, #05070B 90%);"></div>
+
+    <div class="relative z-10 max-w-5xl mx-auto w-full flex flex-col items-start text-left mt-8">
+      
+      <!-- System Telemetry Tagline -->
+      <div class="hero-boot-item inline-flex items-center gap-3 px-3.5 py-1.5 rounded-full bg-surface/90 border border-border mb-6 backdrop-blur-md">
+        <span class="inline-block w-2 h-2 rounded-full bg-risk-red animate-pulse"></span>
+        <span class="font-mono text-xs text-slate-300 font-semibold tracking-wider uppercase">
+          THREAT RECON LEVEL // ARMED & ENGAGED
+        </span>
+        <span class="text-border-subtle">|</span>
+        <span class="font-mono text-xs text-cyan font-bold">ZERO-DAY RESEARCH</span>
+      </div>
+
+      <!-- Main Headline (Chakra Petch) -->
+      <h1 class="font-chakra text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white uppercase leading-[1.05] mb-6">
+        <span class="hero-line block text-slate-100">BREACHES DON'T</span>
+        <span class="hero-line block bg-gradient-to-r from-cyan via-cyan-glow to-violet bg-clip-text text-transparent">
+          ANNOUNCE THEMSELVES.
+        </span>
+        <span class="hero-line block text-white/95">WE DO.</span>
+      </h1>
+
+      <!-- Subtitle -->
+      <p class="hero-boot-item font-inter text-lg sm:text-xl text-slate-400 max-w-2xl leading-relaxed mb-10">
+        Elite offensive-security practice delivering deep adversarial penetration testing, Android APK bytecode reverse-engineering, and weaponized vulnerability research before hostile actors strike.
+      </p>
+
+      <!-- CTA Buttons -->
+      <div class="hero-boot-item flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto mb-16">
+        <a href="#contact" class="magnetic-btn px-8 py-4 rounded-xl bg-gradient-to-r from-cyan to-violet text-void font-chakra font-bold text-sm tracking-widest uppercase transition-all duration-300 hover:shadow-[0_0_35px_rgba(57,230,221,0.5)] hover:scale-[1.02] flex items-center justify-center gap-2">
+          <span>REQUEST AN ADVERSARIAL AUDIT</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+        </a>
+
+        <a href="#threat-matrix" class="magnetic-btn px-8 py-4 rounded-xl bg-surface-elevated border border-border hover:border-cyan text-white font-mono text-sm font-semibold tracking-wider uppercase transition-all duration-300 hover:bg-surface flex items-center justify-center gap-2">
+          <span>EXPLORE THREAT MATRIX</span>
+          <svg class="w-4 h-4 text-cyan" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+        </a>
+      </div>
+
+      <!-- 4-Stat Ticker Row (Orchestrated count-up on load) -->
+      <div class="hero-boot-item w-full grid grid-cols-2 md:grid-cols-4 gap-4 pt-8 border-t border-border/80">
+        
+        <div class="p-4 rounded-xl bg-surface/60 border border-border backdrop-blur-sm">
+          <div class="flex items-baseline gap-1">
+            <span class="font-chakra font-bold text-3xl sm:text-4xl text-cyan stat-counter" data-target="140">0</span>
+            <span class="font-chakra font-bold text-2xl text-cyan">+</span>
+          </div>
+          <div class="font-mono text-xs text-slate-400 mt-1 uppercase tracking-wider">Training Modules</div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface/60 border border-border backdrop-blur-sm">
+          <div class="flex items-baseline gap-1">
+            <span class="font-chakra font-bold text-3xl sm:text-4xl text-violet stat-counter" data-target="5">0</span>
+            <span class="font-chakra font-bold text-xl text-violet">-Stage</span>
+          </div>
+          <div class="font-mono text-xs text-slate-400 mt-1 uppercase tracking-wider">Offensive Methodology</div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface/60 border border-border backdrop-blur-sm">
+          <div class="flex items-baseline gap-1">
+            <span class="font-chakra font-bold text-3xl sm:text-4xl text-white stat-counter" data-target="4">0</span>
+            <span class="font-mono text-xs text-cyan font-bold ml-1">PIPELINES</span>
+          </div>
+          <div class="font-mono text-xs text-slate-400 mt-1 uppercase tracking-wider">Core Service Lines</div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface/60 border border-border backdrop-blur-sm">
+          <div class="flex items-baseline gap-1">
+            <span class="font-chakra font-bold text-2xl sm:text-3xl text-risk-green">24/7/365</span>
+          </div>
+          <div class="font-mono text-xs text-slate-400 mt-1 uppercase tracking-wider">Active Threat Telemetry</div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 3. FUNCTIONAL 5x5 THREAT MATRIX SECTION -->
+  <section id="threat-matrix" class="py-28 px-4 sm:px-6 lg:px-8 bg-surface/50 relative border-t border-border">
+    <div class="max-w-7xl mx-auto">
+      
+      <!-- Section Header -->
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+        <div>
+          <div class="inline-flex items-center gap-2 font-mono text-xs text-cyan font-bold tracking-widest uppercase mb-3">
+            <span class="w-2 h-2 rounded-full bg-cyan"></span>
+            01 // VULNERABILITY TAXONOMY
+          </div>
+          <h2 class="font-chakra text-3xl sm:text-5xl font-bold text-white uppercase tracking-tight">
+            5×5 RISK ASSESSMENT MATRIX
+          </h2>
+          <p class="font-inter text-slate-400 text-base max-w-2xl mt-3">
+            Quantified likelihood-versus-impact mapping across real-world enterprise vectors. Click any highlighted cell to review attack surface taxonomy and PoC vectors.
+          </p>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex items-center gap-4 font-mono text-xs bg-surface p-3 rounded-xl border border-border">
+          <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-risk-green"></span> <span class="text-slate-300">LOW</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-risk-amber"></span> <span class="text-slate-300">MEDIUM</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-risk-red"></span> <span class="text-slate-300">CRITICAL</span></div>
+        </div>
+      </div>
+
+      <!-- Matrix Interactive Container -->
+      <div class="grid lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- The 5x5 Grid Table -->
+        <div class="lg:col-span-8 overflow-x-auto p-4 rounded-2xl bg-void/90 border border-border shadow-2xl">
+          <div class="min-w-[620px]">
+            
+            <!-- Column Headers (Impact) -->
+            <div class="grid grid-cols-6 gap-2 mb-2 text-center font-mono text-xs font-bold">
+              <div class="text-slate-500 flex items-center justify-center">LIKELIHOOD ↓</div>
+              <div class="text-slate-400">1. Negligible</div>
+              <div class="text-slate-400">2. Minor</div>
+              <div class="text-slate-400">3. Moderate</div>
+              <div class="text-slate-400">4. Major</div>
+              <div class="text-slate-400 text-risk-red font-bold">5. Severe</div>
+            </div>
+
+            <!-- Matrix Rows (Likelihood: 5 -> 1) -->
+            <div id="matrix-grid" class="space-y-2">
+              
+              <!-- Row 5: Almost Certain -->
+              <div class="grid grid-cols-6 gap-2">
+                <div class="font-mono text-xs text-slate-400 flex items-center pr-2 font-bold">5. Almost Certain</div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-amber/30 bg-risk-amber/10 hover:bg-risk-amber/25 cursor-pointer transition-all duration-300" data-cve="VEC-51" data-vuln="Verbose Information Disclosure" data-impact="Negligible (1)" data-like="Almost Certain (5)" data-score="5 - MEDIUM" data-remed="Enforce global error handlers and sanitize stack traces from HTTP responses.">
+                  <div class="font-mono text-[10px] text-risk-amber font-bold">5</div>
+                  <div class="font-mono text-[9px] text-slate-300 truncate">Info Leak</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-amber/30 bg-risk-amber/10 hover:bg-risk-amber/25 cursor-pointer transition-all duration-300" data-cve="VEC-52" data-vuln="Missing Rate Limiting on Auth API" data-impact="Minor (2)" data-like="Almost Certain (5)" data-score="10 - MEDIUM" data-remed="Implement token bucket algorithm & IP-reputation throttling at API gateway.">
+                  <div class="font-mono text-[10px] text-risk-amber font-bold">10</div>
+                  <div class="font-mono text-[9px] text-slate-300 truncate">Rate Limit API</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-red/40 bg-risk-red/15 hover:bg-risk-red/30 cursor-pointer transition-all duration-300" data-cve="VEC-53" data-vuln="Insecure Direct Object Reference (IDOR)" data-impact="Moderate (3)" data-like="Almost Certain (5)" data-score="15 - CRITICAL" data-remed="Enforce strict attribute-based access control (ABAC) on every database lookup.">
+                  <div class="font-mono text-[10px] text-risk-red font-bold">15 ⚠</div>
+                  <div class="font-mono text-[9px] text-white font-semibold truncate">IDOR Profile API</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-red/50 bg-risk-red/25 hover:bg-risk-red/40 cursor-pointer transition-all duration-300 shadow-[0_0_15px_rgba(255,92,108,0.2)]" data-cve="VEC-54" data-vuln="Hardcoded Secret Keys in APK Assets" data-impact="Major (4)" data-like="Almost Certain (5)" data-score="20 - CRITICAL" data-remed="Migrate all encryption keys and cloud credentials to secure Android Keystore / remote HSM.">
+                  <div class="font-mono text-[10px] text-risk-red font-extrabold">20 ⚡</div>
+                  <div class="font-mono text-[9px] text-white font-bold truncate">Hardcoded APK Keys</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-red/60 bg-risk-red/35 hover:bg-risk-red/50 cursor-pointer transition-all duration-300 shadow-[0_0_20px_rgba(255,92,108,0.3)]" data-cve="VEC-55" data-vuln="Unauthenticated Remote Command Injection" data-impact="Severe (5)" data-like="Almost Certain (5)" data-score="25 - MAXIMUM" data-remed="Complete architectural rewrite eliminating shell-invocation and unvalidated input piping.">
+                  <div class="font-mono text-[10px] text-risk-red font-extrabold">25 🔥</div>
+                  <div class="font-mono text-[9px] text-white font-bold truncate">RCE Root Shell</div>
+                </div>
+              </div>
+
+              <!-- Row 4: Likely -->
+              <div class="grid grid-cols-6 gap-2">
+                <div class="font-mono text-xs text-slate-400 flex items-center pr-2 font-bold">4. Likely</div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-green/30 bg-risk-green/10 hover:bg-risk-green/25 cursor-pointer transition-all duration-300" data-cve="VEC-41" data-vuln="Cookie Without SameSite Attribute" data-impact="Negligible (1)" data-like="Likely (4)" data-score="4 - LOW" data-remed="Set SameSite=Strict and Secure flags on all session cookies.">
+                  <div class="font-mono text-[10px] text-risk-green font-bold">4</div>
+                  <div class="font-mono text-[9px] text-slate-300 truncate">Cookie SameSite</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-amber/30 bg-risk-amber/10 hover:bg-risk-amber/25 cursor-pointer transition-all duration-300" data-cve="VEC-42" data-vuln="CORS Wildcard Configuration" data-impact="Minor (2)" data-like="Likely (4)" data-score="8 - MEDIUM" data-remed="Replace Access-Control-Allow-Origin: * with explicit domain allowlisting.">
+                  <div class="font-mono text-[10px] text-risk-amber font-bold">8</div>
+                  <div class="font-mono text-[9px] text-slate-300 truncate">CORS Misconfig</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-amber/40 bg-risk-amber/15 hover:bg-risk-amber/30 cursor-pointer transition-all duration-300" data-cve="VEC-43" data-vuln="Insecure Local Storage & SQLite Leakage" data-impact="Moderate (3)" data-like="Likely (4)" data-score="12 - HIGH" data-remed="Deploy SQLCipher with AES-256 for all local persistence layers.">
+                  <div class="font-mono text-[10px] text-risk-amber font-bold">12</div>
+                  <div class="font-mono text-[9px] text-slate-200 truncate">Insecure SQLite</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-red/40 bg-risk-red/20 hover:bg-risk-red/35 cursor-pointer transition-all duration-300" data-cve="VEC-44" data-vuln="Missing Certificate Pinning (MITM)" data-impact="Major (4)" data-like="Likely (4)" data-score="16 - CRITICAL" data-remed="Implement OkHttp CertificatePinner and integrate Frida anti-tampering hooks.">
+                  <div class="font-mono text-[10px] text-risk-red font-bold">16 ⚠</div>
+                  <div class="font-mono text-[9px] text-white font-semibold truncate">No Cert Pinning</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-red/50 bg-risk-red/30 hover:bg-risk-red/45 cursor-pointer transition-all duration-300" data-cve="VEC-45" data-vuln="SSRF via Cloud Metadata Service" data-impact="Severe (5)" data-like="Likely (4)" data-score="20 - CRITICAL" data-remed="Restrict egress to 169.254.169.254 and enforce IMDSv2 tokens.">
+                  <div class="font-mono text-[10px] text-risk-red font-extrabold">20 ⚡</div>
+                  <div class="font-mono text-[9px] text-white font-bold truncate">Cloud SSRF Meta</div>
+                </div>
+              </div>
+
+              <!-- Row 3: Possible -->
+              <div class="grid grid-cols-6 gap-2">
+                <div class="font-mono text-xs text-slate-400 flex items-center pr-2 font-bold">3. Possible</div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-green/30 bg-risk-green/10 hover:bg-risk-green/25 cursor-pointer transition-all duration-300" data-cve="VEC-31" data-vuln="Clickjacking via Missing X-Frame-Options" data-impact="Negligible (1)" data-like="Possible (3)" data-score="3 - LOW" data-remed="Include Content-Security-Policy: frame-ancestors 'none'.">
+                  <div class="font-mono text-[10px] text-risk-green font-bold">3</div>
+                  <div class="font-mono text-[9px] text-slate-300 truncate">Clickjacking</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-green/40 bg-risk-green/15 hover:bg-risk-green/30 cursor-pointer transition-all duration-300" data-cve="VEC-32" data-vuln="Debug Mode Active in Manifest" data-impact="Minor (2)" data-like="Possible (3)" data-score="6 - LOW" data-remed="Ensure android:debuggable='false' in release Gradle build variant.">
+                  <div class="font-mono text-[10px] text-risk-green font-bold">6</div>
+                  <div class="font-mono text-[9px] text-slate-300 truncate">Debug Manifest</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-amber/30 bg-risk-amber/10 hover:bg-risk-amber/25 cursor-pointer transition-all duration-300" data-cve="VEC-33" data-vuln="Stored XSS in Administration Console" data-impact="Moderate (3)" data-like="Possible (3)" data-score="9 - MEDIUM" data-remed="Context-aware HTML entity encoding and strict CSP script-src nonces.">
+                  <div class="font-mono text-[10px] text-risk-amber font-bold">9</div>
+                  <div class="font-mono text-[9px] text-slate-200 truncate">Stored XSS Admin</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-amber/40 bg-risk-amber/20 hover:bg-risk-amber/35 cursor-pointer transition-all duration-300" data-cve="VEC-34" data-vuln="JWT Signature None Algorithm Exploitation" data-impact="Major (4)" data-like="Possible (3)" data-score="12 - HIGH" data-remed="Hard-code expected asymmetric verification algorithms (RS256/Ed25519).">
+                  <div class="font-mono text-[10px] text-risk-amber font-bold">12</div>
+                  <div class="font-mono text-[9px] text-slate-200 truncate">JWT Algo None</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-red/40 bg-risk-red/25 hover:bg-risk-red/40 cursor-pointer transition-all duration-300" data-cve="VEC-35" data-vuln="Blind SQL Injection via Search API" data-impact="Severe (5)" data-like="Possible (3)" data-score="15 - CRITICAL" data-remed="Enforce parameterized PreparedStatements across all ORM query builders.">
+                  <div class="font-mono text-[10px] text-risk-red font-bold">15 ⚠</div>
+                  <div class="font-mono text-[9px] text-white font-semibold truncate">Blind SQLi API</div>
+                </div>
+              </div>
+
+              <!-- Row 2: Unlikely -->
+              <div class="grid grid-cols-6 gap-2">
+                <div class="font-mono text-xs text-slate-400 flex items-center pr-2 font-bold">2. Unlikely</div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-green/30 bg-risk-green/10 hover:bg-risk-green/25 cursor-pointer transition-all duration-300" data-cve="VEC-21" data-vuln="Server Version Header Disclosure" data-impact="Negligible (1)" data-like="Unlikely (2)" data-score="2 - LOW" data-remed="Strip Server, X-Powered-By headers in Nginx/Cloudflare reverse proxy.">
+                  <div class="font-mono text-[10px] text-risk-green font-bold">2</div>
+                  <div class="font-mono text-[9px] text-slate-300 truncate">Banner Leak</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-green/30 bg-risk-green/10 hover:bg-risk-green/25 cursor-pointer transition-all duration-300" data-cve="VEC-22" data-vuln="Weak Password Policy Threshold" data-impact="Minor (2)" data-like="Unlikely (2)" data-score="4 - LOW" data-remed="Enforce 14+ characters, zxcvbn entropy check, and breach-dictionary filtering.">
+                  <div class="font-mono text-[10px] text-risk-green font-bold">4</div>
+                  <div class="font-mono text-[9px] text-slate-300 truncate">Weak Password</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-green/40 bg-risk-green/15 hover:bg-risk-green/30 cursor-pointer transition-all duration-300" data-cve="VEC-23" data-vuln="Path Traversal in Legacy Asset Downloader" data-impact="Moderate (3)" data-like="Unlikely (2)" data-score="6 - LOW" data-remed="Use realpath() validation and reject any ../ sequences strictly.">
+                  <div class="font-mono text-[10px] text-risk-green font-bold">6</div>
+                  <div class="font-mono text-[9px] text-slate-300 truncate">Path Traversal</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-amber/30 bg-risk-amber/15 hover:bg-risk-amber/30 cursor-pointer transition-all duration-300" data-cve="VEC-24" data-vuln="Privilege Escalation via Insecure Broadcast" data-impact="Major (4)" data-like="Unlikely (2)" data-score="8 - MEDIUM" data-remed="Add android:exported='false' or apply custom signature permissions.">
+                  <div class="font-mono text-[10px] text-risk-amber font-bold">8</div>
+                  <div class="font-mono text-[9px] text-slate-200 truncate">IPC Broadcast</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-amber/40 bg-risk-amber/25 hover:bg-risk-amber/40 cursor-pointer transition-all duration-300" data-cve="VEC-25" data-vuln="XML External Entity (XXE) Injection" data-impact="Severe (5)" data-like="Unlikely (2)" data-score="10 - MEDIUM" data-remed="Disable DTDs (disallow-doctype-decl) across all SAX and DOM XML parsers.">
+                  <div class="font-mono text-[10px] text-risk-amber font-bold">10</div>
+                  <div class="font-mono text-[9px] text-slate-200 truncate">XXE Parser</div>
+                </div>
+              </div>
+
+              <!-- Row 1: Rare -->
+              <div class="grid grid-cols-6 gap-2">
+                <div class="font-mono text-xs text-slate-400 flex items-center pr-2 font-bold">1. Rare</div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-green/20 bg-risk-green/5 hover:bg-risk-green/20 cursor-pointer transition-all duration-300" data-cve="VEC-11" data-vuln="TCP Timestamp Information Leak" data-impact="Negligible (1)" data-like="Rare (1)" data-score="1 - LOW" data-remed="Disable net.ipv4.tcp_timestamps in Linux kernel sysctl config.">
+                  <div class="font-mono text-[10px] text-risk-green font-bold">1</div>
+                  <div class="font-mono text-[9px] text-slate-400 truncate">TCP Timestamps</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-green/20 bg-risk-green/5 hover:bg-risk-green/20 cursor-pointer transition-all duration-300" data-cve="VEC-12" data-vuln="Internal IP Address Disclosure in Headers" data-impact="Minor (2)" data-like="Rare (1)" data-score="2 - LOW" data-remed="Configure reverse proxy to mask RFC1918 internal routing headers.">
+                  <div class="font-mono text-[10px] text-risk-green font-bold">2</div>
+                  <div class="font-mono text-[9px] text-slate-400 truncate">Internal IP</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-green/30 bg-risk-green/10 hover:bg-risk-green/25 cursor-pointer transition-all duration-300" data-cve="VEC-13" data-vuln="Subdomain Takeover on Stale CNAME" data-impact="Moderate (3)" data-like="Rare (1)" data-score="3 - LOW" data-remed="Audit DNS zone files and purge dangling records for decommissioned S3/Azure buckets.">
+                  <div class="font-mono text-[10px] text-risk-green font-bold">3</div>
+                  <div class="font-mono text-[9px] text-slate-300 truncate">DNS Takeover</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-green/40 bg-risk-green/15 hover:bg-risk-green/30 cursor-pointer transition-all duration-300" data-cve="VEC-14" data-vuln="Insecure Deserialization in Worker Queue" data-impact="Major (4)" data-like="Rare (1)" data-score="4 - LOW" data-remed="Replace binary serialization formats with strict JSON schemas.">
+                  <div class="font-mono text-[10px] text-risk-green font-bold">4</div>
+                  <div class="font-mono text-[9px] text-slate-300 truncate">Deserialization</div>
+                </div>
+                <div class="matrix-cell p-2.5 rounded-lg border border-risk-amber/30 bg-risk-amber/15 hover:bg-risk-amber/30 cursor-pointer transition-all duration-300" data-cve="VEC-15" data-vuln="Hardware Side-Channel Timing Attack" data-impact="Severe (5)" data-like="Rare (1)" data-score="5 - MEDIUM" data-remed="Implement constant-time cryptographic comparisons for all MAC and hash checks.">
+                  <div class="font-mono text-[10px] text-risk-amber font-bold">5</div>
+                  <div class="font-mono text-[9px] text-slate-200 truncate">Timing Attack</div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Matrix Inspector Panel (Right) -->
+        <div class="lg:col-span-4 p-6 rounded-2xl bg-surface border border-border sticky top-28">
+          <div class="flex items-center justify-between pb-4 mb-4 border-b border-border">
+            <span class="font-mono text-xs text-cyan font-bold" id="inspector-code">VEC-54 // SELECTED</span>
+            <span class="px-2.5 py-1 rounded-md font-mono text-[11px] font-bold bg-risk-red/20 text-risk-red border border-risk-red/40" id="inspector-badge">20 - CRITICAL</span>
+          </div>
+
+          <h3 class="font-chakra text-2xl font-bold text-white mb-3" id="inspector-title">
+            Hardcoded Secret Keys in APK Assets
+          </h3>
+
+          <div class="space-y-4 font-mono text-xs">
+            <div class="flex justify-between py-1.5 border-b border-border/50">
+              <span class="text-slate-400">LIKELIHOOD:</span>
+              <span class="text-white font-semibold" id="inspector-like">Almost Certain (5)</span>
+            </div>
+            <div class="flex justify-between py-1.5 border-b border-border/50">
+              <span class="text-slate-400">IMPACT:</span>
+              <span class="text-white font-semibold" id="inspector-impact">Major (4)</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block mb-1.5 font-bold">REMEDIATION VECTOR:</span>
+              <p class="font-inter text-slate-300 text-xs leading-relaxed bg-void p-3.5 rounded-xl border border-border" id="inspector-remed">
+                Migrate all encryption keys and cloud credentials to secure Android Keystore / remote HSM. Never bundle un-obfuscated tokens inside Android strings.xml or native JNI libs.
+              </p>
+            </div>
+          </div>
+
+          <a href="#contact" class="mt-6 w-full py-3 rounded-xl bg-surface-elevated border border-cyan/40 hover:border-cyan text-cyan font-mono text-xs font-bold tracking-wider uppercase text-center block transition-all hover:bg-cyan/10">
+            AUDIT YOUR ATTACK SURFACE →
+          </a>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 4. CAPABILITIES CONNECTED PIPELINE SECTION -->
+  <section id="capabilities" class="py-28 px-4 sm:px-6 lg:px-8 bg-void relative border-t border-border overflow-hidden">
+    <div class="max-w-7xl mx-auto relative z-10">
+      
+      <div class="mb-20 text-center max-w-3xl mx-auto">
+        <div class="inline-flex items-center gap-2 font-mono text-xs text-violet font-bold tracking-widest uppercase mb-3">
+          <span class="w-2 h-2 rounded-full bg-violet"></span>
+          02 // OFFENSIVE SERVICE LINES
+        </div>
+        <h2 class="font-chakra text-3xl sm:text-5xl font-bold text-white uppercase tracking-tight">
+          CONNECTED CAPABILITY PIPELINE
+        </h2>
+        <p class="font-inter text-slate-400 text-base mt-3">
+          Our service lines do not operate in silos. They function as a continuous adversarial simulation loop where findings reinforce full-spectrum defense.
+        </p>
+      </div>
+
+      <!-- Pipeline Container with Animated SVG Center Spine -->
+      <div class="relative">
+        
+        <!-- Animated Connecting Line (Desktop) -->
+        <div class="hidden lg:block absolute top-1/2 left-0 right-0 h-1 bg-border -translate-y-1/2 -z-0">
+          <div id="pipeline-progress-line" class="h-full bg-gradient-to-r from-cyan via-violet to-cyan w-0 transition-all duration-1000"></div>
+        </div>
+
+        <div class="grid lg:grid-cols-4 gap-8 relative z-10">
+          
+          <!-- Node 1: Penetration Testing -->
+          <div class="pipeline-card p-6 rounded-2xl bg-surface border border-border hover:border-cyan/60 transition-all duration-500 group shadow-xl">
+            <div class="flex items-center justify-between mb-6">
+              <span class="font-mono text-xs font-bold text-cyan">PIPE_01 // WEB & CLOUD</span>
+              <div class="w-10 h-10 rounded-xl bg-void border border-border flex items-center justify-center text-cyan group-hover:border-cyan group-hover:shadow-[0_0_15px_rgba(57,230,221,0.4)] transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/></svg>
+              </div>
+            </div>
+            <h3 class="font-chakra text-xl font-bold text-white mb-3">PENETRATION TESTING</h3>
+            <p class="font-inter text-slate-400 text-sm leading-relaxed mb-6">
+              Full-scope Blackbox and Greybox adversarial operations across AWS/Azure infrastructure, GraphQL endpoints, and modern Single Page Applications.
+            </p>
+            <ul class="font-mono text-xs space-y-2 text-slate-300 border-t border-border/60 pt-4">
+              <li class="flex items-center gap-2"><span class="text-cyan">▸</span> Red Team Adversary Simulation</li>
+              <li class="flex items-center gap-2"><span class="text-cyan">▸</span> Cloud IAM & Container Escape</li>
+              <li class="flex items-center gap-2"><span class="text-cyan">▸</span> Business Logic Exploitation</li>
+            </ul>
+          </div>
+
+          <!-- Node 2: APK Shield AI -->
+          <div class="pipeline-card p-6 rounded-2xl bg-surface border border-border hover:border-violet/60 transition-all duration-500 group shadow-xl">
+            <div class="flex items-center justify-between mb-6">
+              <span class="font-mono text-xs font-bold text-violet">PIPE_02 // ANDROID NATIVE</span>
+              <div class="w-10 h-10 rounded-xl bg-void border border-border flex items-center justify-center text-violet group-hover:border-violet group-hover:shadow-[0_0_15px_rgba(123,97,255,0.4)] transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/></svg>
+              </div>
+            </div>
+            <h3 class="font-chakra text-xl font-bold text-white mb-3">APK SHIELD AI</h3>
+            <p class="font-inter text-slate-400 text-sm leading-relaxed mb-6">
+              In-depth Android reverse engineering: Dalvik bytecode deobfuscation, dynamic Frida hook instrumentation, root-detection bypass, and secure enclave audits.
+            </p>
+            <ul class="font-mono text-xs space-y-2 text-slate-300 border-t border-border/60 pt-4">
+              <li class="flex items-center gap-2"><span class="text-violet">▸</span> JADX / Ghidra Decompilation</li>
+              <li class="flex items-center gap-2"><span class="text-violet">▸</span> Frida Dynamic SSL Unpinning</li>
+              <li class="flex items-center gap-2"><span class="text-violet">▸</span> IPC / Intent Hijacking Analysis</li>
+            </ul>
+          </div>
+
+          <!-- Node 3: Bug Bounty Training -->
+          <div class="pipeline-card p-6 rounded-2xl bg-surface border border-border hover:border-cyan/60 transition-all duration-500 group shadow-xl">
+            <div class="flex items-center justify-between mb-6">
+              <span class="font-mono text-xs font-bold text-cyan">PIPE_03 // TACTICAL LABS</span>
+              <div class="w-10 h-10 rounded-xl bg-void border border-border flex items-center justify-center text-cyan group-hover:border-cyan group-hover:shadow-[0_0_15px_rgba(57,230,221,0.4)] transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-5.25 6.557c0 1.554.887 2.923 2.19 3.597"/></svg>
+              </div>
+            </div>
+            <h3 class="font-chakra text-xl font-bold text-white mb-3">BUG BOUNTY TRAINING</h3>
+            <p class="font-inter text-slate-400 text-sm leading-relaxed mb-6">
+              Hands-on offensive engineering curriculum: zero-day weaponization, chain-exploitation workshops, and real-world CTF sandbox simulations for engineering teams.
+            </p>
+            <ul class="font-mono text-xs space-y-2 text-slate-300 border-t border-border/60 pt-4">
+              <li class="flex items-center gap-2"><span class="text-cyan">▸</span> Zero-Day Hunting Methodology</li>
+              <li class="flex items-center gap-2"><span class="text-cyan">▸</span> Custom Fuzzer Scripting</li>
+              <li class="flex items-center gap-2"><span class="text-cyan">▸</span> Defense Evasion Tactics</li>
+            </ul>
+          </div>
+
+          <!-- Node 4: Security Consulting -->
+          <div class="pipeline-card p-6 rounded-2xl bg-surface border border-border hover:border-violet/60 transition-all duration-500 group shadow-xl">
+            <div class="flex items-center justify-between mb-6">
+              <span class="font-mono text-xs font-bold text-violet">PIPE_04 // DEFENCE HARDENING</span>
+              <div class="w-10 h-10 rounded-xl bg-void border border-border flex items-center justify-center text-violet group-hover:border-violet group-hover:shadow-[0_0_15px_rgba(123,97,255,0.4)] transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
+              </div>
+            </div>
+            <h3 class="font-chakra text-xl font-bold text-white mb-3">SECURITY CONSULTING</h3>
+            <p class="font-inter text-slate-400 text-sm leading-relaxed mb-6">
+              Architectural threat modeling, DevSecOps CI/CD pipeline gating, zero-trust cryptographic implementation, and CREST/ISO 27001 readiness reviews.
+            </p>
+            <ul class="font-mono text-xs space-y-2 text-slate-300 border-t border-border/60 pt-4">
+              <li class="flex items-center gap-2"><span class="text-violet">▸</span> STRIDE Threat Modeling</li>
+              <li class="flex items-center gap-2"><span class="text-violet">▸</span> Zero-Trust Architecture Review</li>
+              <li class="flex items-center gap-2"><span class="text-violet">▸</span> Secure Code Review (Go, Rust, TS)</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 5. METHODOLOGY 5-STAGE NUMBERED STEPPER -->
+  <section id="methodology" class="py-28 px-4 sm:px-6 lg:px-8 bg-surface/40 relative border-t border-border">
+    <div class="max-w-7xl mx-auto">
+      
+      <div class="mb-20 text-center max-w-3xl mx-auto">
+        <div class="inline-flex items-center gap-2 font-mono text-xs text-cyan font-bold tracking-widest uppercase mb-3">
+          <span class="w-2 h-2 rounded-full bg-cyan"></span>
+          03 // EXECUTION LIFECYCLE
+        </div>
+        <h2 class="font-chakra text-3xl sm:text-5xl font-bold text-white uppercase tracking-tight">
+          5-STAGE OFFENSIVE METHODOLOGY
+        </h2>
+        <p class="font-inter text-slate-400 text-base mt-3">
+          A disciplined, zero-damage adversarial framework engineered to thoroughly probe defenses without compromising business continuity.
+        </p>
+      </div>
+
+      <!-- Stepper Container -->
+      <div class="relative max-w-5xl mx-auto">
+        
+        <!-- Animated Stepper Track Line (Desktop Vertical Spine) -->
+        <div class="hidden md:block absolute left-1/2 top-8 bottom-8 w-0.5 bg-border -translate-x-1/2">
+          <div id="methodology-fill-line" class="w-full bg-cyan h-0 transition-all duration-700"></div>
+        </div>
+
+        <div class="space-y-12">
+          
+          <!-- Stage 01 -->
+          <div class="methodology-step relative flex flex-col md:flex-row items-center gap-8">
+            <div class="md:w-1/2 md:text-right">
+              <span class="font-mono text-xs font-bold text-cyan">STAGE_01 // DISCOVERY</span>
+              <h3 class="font-chakra text-2xl font-bold text-white mt-1">RECON & OSINT</h3>
+              <p class="font-inter text-slate-400 text-sm mt-2 leading-relaxed">
+                Passive and active reconnaissance: Certificate transparency parsing, Shodan/Censys attack surface scanning, and employee credential leak intelligence.
+              </p>
+            </div>
+            <div class="relative z-10 w-12 h-12 rounded-full bg-void border-2 border-cyan flex items-center justify-center font-chakra font-bold text-cyan shadow-[0_0_15px_rgba(57,230,221,0.5)]">
+              01
+            </div>
+            <div class="md:w-1/2">
+              <div class="font-mono text-xs bg-void/80 p-3.5 rounded-xl border border-border text-slate-300">
+                <code>[EXEC] subfinder -d target.com | httpx -sc -title</code>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 02 -->
+          <div class="methodology-step relative flex flex-col md:flex-row-reverse items-center gap-8">
+            <div class="md:w-1/2 md:text-left">
+              <span class="font-mono text-xs font-bold text-violet">STAGE_02 // MAPPING</span>
+              <h3 class="font-chakra text-2xl font-bold text-white mt-1">ENUMERATION & HOOKING</h3>
+              <p class="font-inter text-slate-400 text-sm mt-2 leading-relaxed">
+                Service fingerprinting, hidden parameter fuzzing, Dalvik class decompilation, and dynamic Frida runtime instrumentation against target endpoints.
+              </p>
+            </div>
+            <div class="relative z-10 w-12 h-12 rounded-full bg-void border-2 border-violet flex items-center justify-center font-chakra font-bold text-violet shadow-[0_0_15px_rgba(123,97,255,0.5)]">
+              02
+            </div>
+            <div class="md:w-1/2 md:text-right">
+              <div class="font-mono text-xs bg-void/80 p-3.5 rounded-xl border border-border text-slate-300 text-left">
+                <code>[FRIDA] Java.use("com.target.auth").verifySignature.implementation</code>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 03 -->
+          <div class="methodology-step relative flex flex-col md:flex-row items-center gap-8">
+            <div class="md:w-1/2 md:text-right">
+              <span class="font-mono text-xs font-bold text-risk-red">STAGE_03 // INFILTRATION</span>
+              <h3 class="font-chakra text-2xl font-bold text-white mt-1">EXPLOITATION & WEAPONIZATION</h3>
+              <p class="font-inter text-slate-400 text-sm mt-2 leading-relaxed">
+                Crafting targeted Proof-of-Concept exploits to bypass authentication, traverse internal networks, and establish verifiable evidence of vulnerability impact.
+              </p>
+            </div>
+            <div class="relative z-10 w-12 h-12 rounded-full bg-void border-2 border-risk-red flex items-center justify-center font-chakra font-bold text-risk-red shadow-[0_0_15px_rgba(255,92,108,0.5)]">
+              03
+            </div>
+            <div class="md:w-1/2">
+              <div class="font-mono text-xs bg-void/80 p-3.5 rounded-xl border border-border text-slate-300">
+                <code>[POC] JWT Token forged with kid-injection: ADMIN_PRIVILEGES=TRUE</code>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 04 -->
+          <div class="methodology-step relative flex flex-col md:flex-row-reverse items-center gap-8">
+            <div class="md:w-1/2 md:text-left">
+              <span class="font-mono text-xs font-bold text-risk-amber">STAGE_04 // SYNTHESIS</span>
+              <h3 class="font-chakra text-2xl font-bold text-white mt-1">REPORTING & CVSS 3.1</h3>
+              <p class="font-inter text-slate-400 text-sm mt-2 leading-relaxed">
+                Comprehensive executive summary paired with technical reproduction steps, CVSS v3.1 vector calculations, and precise code-level remediation diffs.
+              </p>
+            </div>
+            <div class="relative z-10 w-12 h-12 rounded-full bg-void border-2 border-risk-amber flex items-center justify-center font-chakra font-bold text-risk-amber shadow-[0_0_15px_rgba(245,192,67,0.5)]">
+              04
+            </div>
+            <div class="md:w-1/2 md:text-right">
+              <div class="font-mono text-xs bg-void/80 p-3.5 rounded-xl border border-border text-slate-300 text-left">
+                <code>[SCORE] CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N (9.6)</code>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 05 -->
+          <div class="methodology-step relative flex flex-col md:flex-row items-center gap-8">
+            <div class="md:w-1/2 md:text-right">
+              <span class="font-mono text-xs font-bold text-risk-green">STAGE_05 // HARDENING</span>
+              <h3 class="font-chakra text-2xl font-bold text-white mt-1">REMEDIATION & RETEST</h3>
+              <p class="font-inter text-slate-400 text-sm mt-2 leading-relaxed">
+                Direct advisory support during engineer patch deployment followed by a full re-test verification run to certify complete vulnerability remediation.
+              </p>
+            </div>
+            <div class="relative z-10 w-12 h-12 rounded-full bg-void border-2 border-risk-green flex items-center justify-center font-chakra font-bold text-risk-green shadow-[0_0_15px_rgba(52,211,153,0.5)]">
+              05
+            </div>
+            <div class="md:w-1/2">
+              <div class="font-mono text-xs bg-void/80 p-3.5 rounded-xl border border-border text-slate-300">
+                <code>[VERIFIED] Retest Pass: Exploit mitigated // DEFENCE_STATUS=SECURE</code>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 6. PROOF SECTION (TYPED-ON TERMINAL PANEL & METRICS) -->
+  <section id="proof" class="py-28 px-4 sm:px-6 lg:px-8 bg-void relative border-t border-border">
+    <div class="max-w-7xl mx-auto">
+      
+      <div class="grid lg:grid-cols-12 gap-12 items-center">
+        
+        <!-- Left: Typed Terminal Simulation -->
+        <div class="lg:col-span-7">
+          <div class="rounded-2xl bg-surface border border-border shadow-2xl overflow-hidden font-mono">
+            
+            <!-- Terminal Header -->
+            <div class="px-4 py-3 bg-void/90 border-b border-border flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-risk-red inline-block"></span>
+                <span class="w-3 h-3 rounded-full bg-risk-amber inline-block"></span>
+                <span class="w-3 h-3 rounded-full bg-risk-green inline-block"></span>
+                <span class="ml-2 text-xs text-slate-400">root@iq-defences:~/recon_session</span>
+              </div>
+              <span class="text-[10px] text-cyan uppercase font-bold tracking-widest">LIVE CONSOLE</span>
+            </div>
+
+            <!-- Terminal Body -->
+            <div class="p-5 text-xs text-slate-300 space-y-2 min-h-[360px] bg-void/95 leading-relaxed overflow-y-auto" id="terminal-screen">
+              <div class="text-slate-500 font-bold"># Initializing IQ Defences Offensive Scanner Engine v4.2</div>
+              <div class="text-cyan">$ ./iq-scan --target apk://corp.enterprise.secureapp --deep-audit</div>
+              <div class="text-slate-400">[00:01.04] Decompiling APK DEX bytecode via multi-thread JADX... [OK]</div>
+              <div class="text-slate-400">[00:02.18] Scanning AndroidManifest.xml for exported activities... [14 FOUND]</div>
+              <div class="text-risk-amber">[00:03.45] WARNING: android:exported="true" found on DeepLinkReceiver</div>
+              <div class="text-slate-400">[00:04.12] Injecting Frida agent into process pid:4918... [HOOKED]</div>
+              <div class="text-risk-red font-bold">[00:05.80] CRITICAL: Hardcoded AWS S3 credentials found in assets/config.json</div>
+              <div class="text-slate-400">[00:06.90] Intercepting TLS session via custom TrustManager override... [BYPASSED]</div>
+              <div class="text-risk-red font-bold">[00:08.14] VULNERABILITY CONFIRMED: Missing Certificate Pinning + Insecure Local DB</div>
+              <div class="text-risk-green font-bold">[00:09.50] PoC script generated: poc_exploit_session.py [VERIFIED]</div>
+              <div class="text-cyan mt-4 flex items-center">
+                <span>root@iq-defences:~# </span>
+                <span class="inline-block w-2 h-4 bg-cyan ml-1 animate-pulse" id="terminal-cursor"></span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Right: Hardened Proof Metrics -->
+        <div class="lg:col-span-5 space-y-6">
+          <div class="inline-flex items-center gap-2 font-mono text-xs text-cyan font-bold tracking-widest uppercase">
+            <span class="w-2 h-2 rounded-full bg-cyan"></span>
+            04 // AUDIT ASSURANCE
+          </div>
+          <h2 class="font-chakra text-3xl sm:text-4xl font-bold text-white uppercase tracking-tight">
+            VERIFIED ASSURANCE METRICS
+          </h2>
+          <p class="font-inter text-slate-400 text-sm leading-relaxed">
+            We operate strictly with zero automated noise. Every flagged vector is manually verified, accompanied by custom PoC code, and triaged according to industry benchmarks.
+          </p>
+
+          <div class="space-y-3 pt-2">
+            
+            <div class="p-4 rounded-xl bg-surface border border-border flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-risk-green/10 border border-risk-green/30 flex items-center justify-center text-risk-green font-mono font-bold text-xs">✓</div>
+                <div>
+                  <div class="font-chakra font-bold text-white text-base">0% FALSE POSITIVES</div>
+                  <div class="font-mono text-xs text-slate-400">100% Manual Human Verification</div>
+                </div>
+              </div>
+              <span class="font-mono text-xs text-risk-green font-bold">STRICT GUARANTEE</span>
+            </div>
+
+            <div class="p-4 rounded-xl bg-surface border border-border flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-cyan/10 border border-cyan/30 flex items-center justify-center text-cyan font-mono font-bold text-xs">⚡</div>
+                <div>
+                  <div class="font-chakra font-bold text-white text-base">&lt; 48H RAPID TRIAGE</div>
+                  <div class="font-mono text-xs text-slate-400">Immediate critical finding alert</div>
+                </div>
+              </div>
+              <span class="font-mono text-xs text-cyan font-bold">RAPID SLA</span>
+            </div>
+
+            <div class="p-4 rounded-xl bg-surface border border-border flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-violet/10 border border-violet/30 flex items-center justify-center text-violet font-mono font-bold text-xs">🔒</div>
+                <div>
+                  <div class="font-chakra font-bold text-white text-base">OWASP MASVS ALIGNED</div>
+                  <div class="font-mono text-xs text-slate-400">Standardized mobile security verification</div>
+                </div>
+              </div>
+              <span class="font-mono text-xs text-violet font-bold">LEVEL 2 COMPLIANT</span>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 7. CONTACT SECTION -->
+  <section id="contact" class="py-28 px-4 sm:px-6 lg:px-8 bg-surface/30 relative border-t border-border">
+    <div class="max-w-7xl mx-auto">
+      
+      <div class="grid lg:grid-cols-12 gap-12 items-start">
+        
+        <!-- Left: Contact Details & PGP Key -->
+        <div class="lg:col-span-5 space-y-6">
+          <div class="inline-flex items-center gap-2 font-mono text-xs text-cyan font-bold tracking-widest uppercase">
+            <span class="w-2 h-2 rounded-full bg-cyan"></span>
+            05 // SECURE TRANSMISSION
+          </div>
+          <h2 class="font-chakra text-3xl sm:text-5xl font-bold text-white uppercase tracking-tight">
+            INITIATE ENGAGEMENT
+          </h2>
+          <p class="font-inter text-slate-400 text-sm leading-relaxed">
+            All discussions are protected under standard mutual non-disclosure agreements (NDA). For sensitive zero-day disclosures, transmit your scope using our PGP public key.
+          </p>
+
+          <div class="p-5 rounded-2xl bg-void border border-border space-y-4 font-mono text-xs">
+            <div>
+              <span class="text-slate-500 block">PGP FINGERPRINT:</span>
+              <span class="text-cyan font-semibold select-all break-all">
+                4B92 E7A1 3C88 F019 92B4 7120 EE19 8AF2 39E6 DD01
+              </span>
+            </div>
+            <div class="flex justify-between border-t border-border pt-3">
+              <span class="text-slate-500">ENCRYPTED COMS:</span>
+              <span class="text-slate-200">security@iqdefences.io</span>
+            </div>
+            <div class="flex justify-between border-t border-border pt-3">
+              <span class="text-slate-500">RESPONSE SLA:</span>
+              <span class="text-risk-green font-bold">&lt; 4 HOURS</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Working Interactive Form -->
+        <div class="lg:col-span-7 p-8 rounded-2xl bg-void border border-border shadow-2xl">
+          <form id="engagement-form" class="space-y-6" onsubmit="event.preventDefault(); handleFormSubmit();">
+            
+            <div class="grid sm:grid-cols-2 gap-6">
+              <div>
+                <label class="block font-mono text-xs text-slate-300 uppercase mb-2">FULL NAME *</label>
+                <input type="text" required placeholder="Deepak Kumar" class="w-full px-4 py-3 rounded-xl bg-surface border border-border focus:border-cyan focus:outline-none text-white font-mono text-xs transition-colors" />
+              </div>
+
+              <div>
+                <label class="block font-mono text-xs text-slate-300 uppercase mb-2">BUSINESS EMAIL *</label>
+                <input type="email" required placeholder="alex@enterprise.com" class="w-full px-4 py-3 rounded-xl bg-surface border border-border focus:border-cyan focus:outline-none text-white font-mono text-xs transition-colors" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block font-mono text-xs text-slate-300 uppercase mb-2">SCOPE OF ENGAGEMENT *</label>
+              <select required class="w-full px-4 py-3 rounded-xl bg-surface border border-border focus:border-cyan focus:outline-none text-white font-mono text-xs transition-colors">
+                <option value="apk">Android APK Reverse Engineering & Audit</option>
+                <option value="pentest">Web Application & Cloud Penetration Testing</option>
+                <option value="redteam">Full Red Team Adversarial Simulation</option>
+                <option value="bounty">Bug Bounty Training & Tactical Labs</option>
+                <option value="emergency">Emergency Vulnerability Response</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-mono text-xs text-slate-300 uppercase mb-2">TARGET DETAILS & TIMELINE</label>
+              <textarea rows="4" placeholder="Specify endpoints, APK package names, or target architecture details..." class="w-full px-4 py-3 rounded-xl bg-surface border border-border focus:border-cyan focus:outline-none text-white font-mono text-xs transition-colors"></textarea>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <input type="checkbox" id="nda-checkbox" required class="w-4 h-4 rounded bg-surface border-border text-cyan focus:ring-cyan" />
+              <label for="nda-checkbox" class="font-inter text-xs text-slate-400">
+                I request an encrypted mutual NDA prior to exchanging target technical scope.
+              </label>
+            </div>
+
+            <button type="submit" id="submit-btn" class="magnetic-btn w-full py-4 rounded-xl bg-gradient-to-r from-cyan to-violet text-void font-chakra font-bold text-sm tracking-widest uppercase transition-all duration-300 hover:shadow-[0_0_35px_rgba(57,230,221,0.5)] flex items-center justify-center gap-2">
+              <span id="btn-text">TRANSMIT ENGAGEMENT REQUEST</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>
+            </button>
+
+            <!-- Success Alert Box (Hidden by default) -->
+            <div id="form-success" class="hidden p-4 rounded-xl bg-risk-green/10 border border-risk-green/40 text-risk-green font-mono text-xs">
+              ✓ TRANSMISSION RECEIVED. Our lead security engineer will review your scope under mutual NDA and contact you within 4 hours.
+            </div>
+
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 8. FOOTER -->
+  <footer class="py-12 px-4 sm:px-6 lg:px-8 bg-void border-t border-border">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 font-mono text-xs text-slate-500">
+      
+      <div class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded-lg bg-surface border border-border flex items-center justify-center text-cyan">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        </div>
+        <span class="font-chakra font-bold text-white text-sm">IQ DEFENCES</span>
+        <span>•</span>
+        <span>OFFENSIVE CYBERSECURITY PRACTICE</span>
+      </div>
+
+      <div class="flex items-center gap-6">
+        <a href="#threat-matrix" class="hover:text-cyan transition-colors">THREAT MATRIX</a>
+        <a href="#capabilities" class="hover:text-cyan transition-colors">CAPABILITIES</a>
+        <a href="#methodology" class="hover:text-cyan transition-colors">METHODOLOGY</a>
+        <a href="#contact" class="hover:text-cyan transition-colors">ENCRYPTED COMMS</a>
+      </div>
+
+      <div>
+        © 2026 IQ DEFENCES. ALL RIGHTS RESERVED.
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- ================= JAVASCRIPT: 3D / VFX & MOTION ================= -->
+  <script>
+    // 1. THREE.JS 3D HERO NETWORK CANVAS
+    (function initThreeNetwork() {
+      const container = document.getElementById('three-hero-container');
+      if (!container || typeof THREE === 'undefined') return;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 180;
+
+      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+
+      const nodeCount = 90;
+      const nodes = [];
+      const nodeGeometry = new THREE.BufferGeometry();
+      const nodePositions = new Float32Array(nodeCount * 3);
+      const nodeColors = new Float32Array(nodeCount * 3);
+
+      const cyanColor = new THREE.Color(0x39E6DD);
+      const violetColor = new THREE.Color(0x7B61FF);
+      const redThreatColor = new THREE.Color(0xFF5C6C);
+
+      for (let i = 0; i < nodeCount; i++) {
+        const x = (Math.random() - 0.5) * 320;
+        const y = (Math.random() - 0.5) * 220;
+        const z = (Math.random() - 0.5) * 180;
+
+        nodePositions[i * 3] = x;
+        nodePositions[i * 3 + 1] = y;
+        nodePositions[i * 3 + 2] = z;
+
+        // A handful of red threat nodes (~10%)
+        const isThreat = Math.random() < 0.12;
+        const chosenColor = isThreat ? redThreatColor : Math.random() > 0.5 ? cyanColor : violetColor;
+        nodeColors[i * 3] = chosenColor.r;
+        nodeColors[i * 3 + 1] = chosenColor.g;
+        nodeColors[i * 3 + 2] = chosenColor.b;
+
+        nodes.push({
+          x, y, z,
+          vx: (Math.random() - 0.5) * 0.2,
+          vy: (Math.random() - 0.5) * 0.2,
+          vz: (Math.random() - 0.5) * 0.2,
+        });
+      }
+
+      nodeGeometry.setAttribute('position', new THREE.BufferAttribute(nodePositions, 3));
+      nodeGeometry.setAttribute('color', new THREE.BufferAttribute(nodeColors, 3));
+
+      // Node Point Cloud Material
+      const nodeMaterial = new THREE.PointsMaterial({
+        size: 3.2,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.85,
+      });
+      const pointCloud = new THREE.Points(nodeGeometry, nodeMaterial);
+      scene.add(pointCloud);
+
+      // Line Mesh for connections
+      const maxDistance = 46;
+      const maxLines = 400;
+      const linePositions = new Float32Array(maxLines * 6);
+      const lineColors = new Float32Array(maxLines * 6);
+
+      const lineGeometry = new THREE.BufferGeometry();
+      lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3).setUsage(THREE.DynamicDrawUsage));
+      lineGeometry.setAttribute('color', new THREE.BufferAttribute(lineColors, 3).setUsage(THREE.DynamicDrawUsage));
+
+      const lineMaterial = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.35 });
+      const lineMesh = new THREE.LineSegments(lineGeometry, lineMaterial);
+      scene.add(lineMesh);
+
+      // Mouse Parallax
+      let mouseX = 0, mouseY = 0;
+      let targetX = 0, targetY = 0;
+
+      window.addEventListener('mousemove', (e) => {
+        mouseX = (e.clientX - window.innerWidth / 2) * 0.05;
+        mouseY = (e.clientY - window.innerHeight / 2) * 0.05;
+      }, { passive: true });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        targetX += (mouseX - targetX) * 0.05;
+        targetY += (mouseY - targetY) * 0.05;
+
+        scene.rotation.y = targetX * 0.01 + performance.now() * 0.0001;
+        scene.rotation.x = targetY * 0.01;
+
+        let lineIndex = 0;
+        const posAttr = nodeGeometry.attributes.position;
+        const linePosAttr = lineGeometry.attributes.position;
+        const lineColAttr = lineGeometry.attributes.color;
+
+        for (let i = 0; i < nodeCount; i++) {
+          const n = nodes[i];
+          n.x += n.vx;
+          n.y += n.vy;
+          n.z += n.vz;
+
+          if (Math.abs(n.x) > 160) n.vx *= -1;
+          if (Math.abs(n.y) > 110) n.vy *= -1;
+          if (Math.abs(n.z) > 90) n.vz *= -1;
+
+          posAttr.setXYZ(i, n.x, n.y, n.z);
+
+          for (let j = i + 1; j < nodeCount; j++) {
+            const n2 = nodes[j];
+            const dist = Math.hypot(n.x - n2.x, n.y - n2.y, n.z - n2.z);
+
+            if (dist < maxDistance && lineIndex < maxLines) {
+              const alpha = 1 - dist / maxDistance;
+              
+              linePosAttr.setXYZ(lineIndex * 2, n.x, n.y, n.z);
+              linePosAttr.setXYZ(lineIndex * 2 + 1, n2.x, n2.y, n2.z);
+
+              lineColAttr.setXYZ(lineIndex * 2, 0.22 * alpha, 0.9 * alpha, 0.86 * alpha);
+              lineColAttr.setXYZ(lineIndex * 2 + 1, 0.48 * alpha, 0.38 * alpha, 1.0 * alpha);
+
+              lineIndex++;
+            }
+          }
+        }
+
+        posAttr.needsUpdate = true;
+        lineGeometry.setDrawRange(0, lineIndex * 2);
+        linePosAttr.needsUpdate = true;
+        lineColAttr.needsUpdate = true;
+
+        renderer.render(scene, camera);
+      }
+
+      animate();
+    })();
+
+    // 2. ORCHESTRATED HERO BOOT-SEQUENCE & STAT COUNTERS
+    document.addEventListener('DOMContentLoaded', () => {
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (!reducedMotion && typeof gsap !== 'undefined') {
+        const tl = gsap.timeline();
+
+        // Headline lines rise into view
+        tl.from('.hero-line', {
+          y: 40,
+          opacity: 0,
+          stagger: 0.18,
+          duration: 1.0,
+          ease: 'power3.out'
+        })
+        .from('.hero-boot-item', {
+          y: 25,
+          opacity: 0,
+          stagger: 0.12,
+          duration: 0.8,
+          ease: 'power2.out'
+        }, '-=0.5');
+      }
+
+      // Stat count-up
+      const counters = document.querySelectorAll('.stat-counter');
+      counters.forEach(counter => {
+        const target = +counter.getAttribute('data-target');
+        let count = 0;
+        const speed = target / 30;
+        const updateCount = () => {
+          count += speed;
+          if (count < target) {
+            counter.innerText = Math.ceil(count);
+            setTimeout(updateCount, 35);
+          } else {
+            counter.innerText = target;
+          }
+        };
+        setTimeout(updateCount, 400);
+      });
+    });
+
+    // 3. THREAT MATRIX INTERACTIVE INSPECTION
+    document.querySelectorAll('.matrix-cell').forEach(cell => {
+      cell.addEventListener('click', () => {
+        document.querySelectorAll('.matrix-cell').forEach(c => c.classList.remove('ring-2', 'ring-cyan'));
+        cell.classList.add('ring-2', 'ring-cyan');
+
+        const cve = cell.getAttribute('data-cve');
+        const vuln = cell.getAttribute('data-vuln');
+        const impact = cell.getAttribute('data-impact');
+        const like = cell.getAttribute('data-like');
+        const score = cell.getAttribute('data-score');
+        const remed = cell.getAttribute('data-remed');
+
+        document.getElementById('inspector-code').innerText = cve + ' // SELECTED';
+        document.getElementById('inspector-title').innerText = vuln;
+        document.getElementById('inspector-badge').innerText = score;
+        document.getElementById('inspector-like').innerText = like;
+        document.getElementById('inspector-impact').innerText = impact;
+        document.getElementById('inspector-remed').innerText = remed;
+      });
+    });
+
+    // 4. SCROLL REVEALS: Matrix lighting & Pipeline fill
+    if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Threat Matrix sequential glow
+      gsap.from('.matrix-cell', {
+        scrollTrigger: {
+          trigger: '#threat-matrix',
+          start: 'top 70%',
+        },
+        scale: 0.9,
+        opacity: 0.3,
+        stagger: {
+          grid: [5, 5],
+          from: 'center',
+          amount: 0.8
+        },
+        duration: 0.6,
+        ease: 'power2.out'
+      });
+
+      // Pipeline line drawing
+      ScrollTrigger.create({
+        trigger: '#capabilities',
+        start: 'top 60%',
+        onEnter: () => {
+          const line = document.getElementById('pipeline-progress-line');
+          if (line) line.style.width = '100%';
+        }
+      });
+
+      // Methodology fill line
+      ScrollTrigger.create({
+        trigger: '#methodology',
+        start: 'top 60%',
+        end: 'bottom 80%',
+        scrub: 1,
+        onUpdate: (self) => {
+          const line = document.getElementById('methodology-fill-line');
+          if (line) line.style.height = (self.progress * 100) + '%';
+        }
+      });
+    }
+
+    // 5. CUSTOM MAGNETIC CURSOR & BUTTON SNAP
+    (function initCustomCursor() {
+      const cursor = document.getElementById('cursor-dot');
+      const follower = document.getElementById('cursor-follower');
+      if (!cursor || !follower) return;
+
+      let mouseX = -100, mouseY = -100;
+      let followerX = -100, followerY = -100;
+
+      window.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+        cursor.style.left = mouseX + 'px';
+        cursor.style.top = mouseY + 'px';
+      }, { passive: true });
+
+      function renderFollower() {
+        followerX += (mouseX - followerX) * 0.18;
+        followerY += (mouseY - followerY) * 0.18;
+        follower.style.left = followerX + 'px';
+        follower.style.top = followerY + 'px';
+        requestAnimationFrame(renderFollower);
+      }
+      renderFollower();
+
+      // Hover snap on interactive buttons
+      document.querySelectorAll('a, button, .matrix-cell, input, select, textarea').forEach(el => {
+        el.addEventListener('mouseenter', () => document.body.classList.add('cursor-hover'));
+        el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-hover'));
+      });
+    })();
+
+    // 6. WORKING ENGAGEMENT FORM HANDLER
+    function handleFormSubmit() {
+      const btn = document.getElementById('submit-btn');
+      const btnText = document.getElementById('btn-text');
+      const success = document.getElementById('form-success');
+
+      btn.disabled = true;
+      btnText.innerText = 'ENCRYPTING & TRANSMITTING...';
+
+      setTimeout(() => {
+        btnText.innerText = 'TRANSMISSION COMPLETE';
+        btn.classList.add('opacity-50');
+        success.classList.remove('hidden');
+      }, 1200);
+    }
+  </script>
+</body>
+</html>

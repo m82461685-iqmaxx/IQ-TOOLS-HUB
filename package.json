@@ -1,0 +1,39 @@
+{
+  "name": "iq-tool-hub-next",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@types/node": "^20.12.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.185.4",
+    "autoprefixer": "^10.4.19",
+    "clsx": "^2.1.1",
+    "gsap": "^3.12.5",
+    "lucide-react": "^0.378.0",
+    "next": "^15.5.25",
+    "postcss": "^8.5.28",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "tailwind-merge": "^2.2.2",
+    "tailwindcss": "^3.4.3",
+    "three": "^0.185.1",
+    "typescript": "^5.4.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.13",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^15.5.25"
+  },
+  "overrides": {
+    "postcss": "^8.5.28",
+    "glob": "^10.5.0"
+  }
+}
